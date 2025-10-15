@@ -4,7 +4,7 @@
 	<meta charset="UTF-8" />
 	<title>Game Grid</title>
 	<meta name="viewport" content="width=device-width,initial-scale=1" />
-	<style>
+		<style>
 		:root {
 			--grid-gap: 12px;
 			--cell-border: 1px solid #000;
@@ -23,10 +23,12 @@
 			display: flex;
 			flex-direction: column;
 		}
-		header {
-			padding: 1rem 1rem 0.5rem;
-		}
-		header h1, header h2 { margin: 0; }
+			header {
+				padding: 1rem 1rem 0.5rem;
+				text-align: center;
+				position: relative;
+			}
+			header h1, header h2 { margin: 0; }
 		header h1[contenteditable], header h2[contenteditable] {
 			outline: none;
 			cursor: text;
@@ -37,7 +39,7 @@
 			box-shadow: 0 0 0 2px #1976d24d;
 			background: #f5faff;
 		}
-		#controls {
+			#controls {
 			display: flex;
 			flex-wrap: wrap;
 			gap: 0.75rem 1rem;
@@ -65,20 +67,21 @@
 			font-weight: 600;
 		}
 		#controls button:hover { background: #f0f0f0; }
-		#grid-wrapper { flex: 1; padding: 1rem; }
+			#grid-wrapper { flex: 1; padding: 1rem; }
 		#grid {
 			display: grid;
 			gap: var(--grid-gap);
 			grid-auto-rows: 1fr;
 		}
-		.cell {
+			.cell {
 			position: relative;
 			border: var(--cell-border);
 			background: #fff;
 			display: flex;
 			flex-direction: column;
 			overflow: hidden;
-			min-height: 140px;
+				min-height: var(--cell-height, 140px);
+				width: var(--cell-width, auto);
 		}
 		.img-wrapper { flex: 1; position: relative; display: flex; align-items: center; justify-content: center; overflow: hidden; }
 		.img-wrapper img { max-width: 100%; max-height: 100%; object-fit: cover; display: block; }
@@ -116,7 +119,15 @@
 		.secondary:hover { background: #ebebeb; }
 		#exportArea { width: 100%; min-height: 120px; font-size: 0.7rem; display: none; }
 		#toggleExport { font-size: 0.7rem; }
-		@media (max-width: 700px) {
+			.presentation #controls,
+			.presentation #toggleExport,
+			.presentation #exportArea,
+			.presentation #presentationToggleLabel { display: none !important; }
+			.presentation body, .presentation #grid-wrapper { padding-top: 0; }
+			.presentation header { padding-top: 1.2rem; }
+			.presentation .cell button.cell-action { opacity: 0 !important; }
+			.presentation .cell:hover button.cell-action { opacity: 0 !important; }
+			@media (max-width: 700px) {
 			#grid { --grid-gap: 8px; }
 			.cell { min-height: 110px; }
 		}
@@ -128,14 +139,14 @@
 		<h2 id="gridSubtitle" contenteditable="true" data-placeholder="Grid Subtitle">Subtitle</h2>
 	</header>
 	<section id="controls" aria-label="Grid controls">
-		<div>
+			<div>
 			<label for="templateSelect">Template</label>
 			<select id="templateSelect">
 				<option value="">(none)</option>
 			</select>
 			<span id="templateStatus"></span>
 		</div>
-		<div>
+			<div>
 			<label for="rowsInput">Rows</label>
 			<input id="rowsInput" type="number" min="1" value="3" />
 		</div>
@@ -143,6 +154,14 @@
 			<label for="colsInput">Columns</label>
 			<input id="colsInput" type="number" min="1" value="4" />
 		</div>
+			<div>
+				<label for="cellWidthInput">Cell Width (px)</label>
+				<input id="cellWidthInput" type="number" min="40" placeholder="auto" />
+			</div>
+			<div>
+				<label for="cellHeightInput">Cell Height (px)</label>
+				<input id="cellHeightInput" type="number" min="40" placeholder="140" />
+			</div>
 		<div>
 			<label for="bgUrlInput">Background URL</label>
 			<input id="bgUrlInput" type="text" placeholder="https://..." />
@@ -164,10 +183,14 @@
 			<label>&nbsp;</label>
 			<button id="regenerate" type="button">Regenerate Grid</button>
 		</div>
-		<div>
+			<div>
 			<label>&nbsp;</label>
 			<button id="toggleExport" type="button">Show Export</button>
 		</div>
+			<div>
+				<label id="presentationToggleLabel">&nbsp;</label>
+				<button id="presentationToggle" type="button">Presentation Mode</button>
+			</div>
 	</section>
 	<main id="grid-wrapper">
 		<div id="grid" aria-live="polite"></div>
@@ -221,6 +244,9 @@
 		const clearBgBtn = document.getElementById('clearBg');
 		const regenerateBtn = document.getElementById('regenerate');
 		const toggleExportBtn = document.getElementById('toggleExport');
+		const presentationToggleBtn = document.getElementById('presentationToggle');
+		const cellWidthInput = document.getElementById('cellWidthInput');
+		const cellHeightInput = document.getElementById('cellHeightInput');
 		const exportArea = document.getElementById('exportArea');
 
 		const imageDialog = document.getElementById('imageDialog');
@@ -260,8 +286,20 @@
 			});
 		}
 
-		function buildGrid() {
-			gridEl.style.gridTemplateColumns = `repeat(${state.cols}, 1fr)`;
+			function buildGrid() {
+				gridEl.style.gridTemplateColumns = `repeat(${state.cols}, 1fr)`;
+				const cw = parseInt(cellWidthInput.value, 10);
+				const ch = parseInt(cellHeightInput.value, 10);
+				if (!isNaN(cw)) {
+					gridEl.style.setProperty('--cell-width', cw + 'px');
+				} else {
+					gridEl.style.removeProperty('--cell-width');
+				}
+				if (!isNaN(ch)) {
+					gridEl.style.setProperty('--cell-height', ch + 'px');
+				} else {
+					gridEl.style.removeProperty('--cell-height');
+				}
 			// adjust cells array size
 			const needed = state.rows * state.cols;
 			if (state.cells.length > needed) state.cells.length = needed;
@@ -343,6 +381,8 @@
 			rowsInput.addEventListener('change', () => { state.rows = Math.max(1, parseInt(rowsInput.value,10)||1); buildGrid(); });
 			colsInput.addEventListener('change', () => { state.cols = Math.max(1, parseInt(colsInput.value,10)||1); buildGrid(); });
 			regenerateBtn.addEventListener('click', () => { state.rows = Math.max(1, parseInt(rowsInput.value,10)||1); state.cols = Math.max(1, parseInt(colsInput.value,10)||1); buildGrid(); });
+			cellWidthInput.addEventListener('change', buildGrid);
+			cellHeightInput.addEventListener('change', buildGrid);
 			templateSelect.addEventListener('change', applyTemplateSelection);
 			applyBgUrlBtn.addEventListener('click', () => {
 				if (bgUrlInput.value.trim()) {
@@ -359,12 +399,16 @@
 				document.body.style.setProperty('--page-bg', '#fff');
 				bgPreview.style.display = 'none';
 			});
-			toggleExportBtn.addEventListener('click', () => {
+					toggleExportBtn.addEventListener('click', () => {
 				const open = exportArea.style.display === 'block';
 				exportArea.style.display = open ? 'none' : 'block';
 				toggleExportBtn.textContent = open ? 'Show Export' : 'Hide Export';
 				if (!open) updateExport();
 			});
+					presentationToggleBtn.addEventListener('click', () => {
+						const isPresentation = document.documentElement.classList.toggle('presentation');
+						presentationToggleBtn.textContent = isPresentation ? 'Exit Presentation' : 'Presentation Mode';
+					});
 			titleEl.addEventListener('input', updateExport);
 			subtitleEl.addEventListener('input', updateExport);
 		}
