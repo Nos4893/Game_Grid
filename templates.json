@@ -7,6 +7,8 @@
       "subtitle": "A curated grid of favorites",
       "rows": 3,
       "cols": 4,
+      "cellWidth": 220,
+      "cellHeight": 160,
       "categories": [
         ["Action", "RPG", "Indie", "Strategy"],
         ["Shooter", "Adventure", "Puzzle", "Racing"],
@@ -20,6 +22,8 @@
       "subtitle": "Pixel nostalgia showcase",
       "rows": 2,
       "cols": 5,
+      "cellWidth": 180,
+      "cellHeight": 150,
       "categories": [
         ["Arcade", "8-bit", "16-bit", "Atari", "DOS"],
         ["Platformer", "Beat 'em up", "Shmup", "JRPG", "Sports"]
@@ -32,6 +36,8 @@
       "subtitle": "Describe your collection",
       "rows": 4,
       "cols": 4,
+      "cellWidth": 200,
+      "cellHeight": 160,
       "categories": []
     }
   ]

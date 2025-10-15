@@ -23,19 +23,19 @@
 			display: flex;
 			flex-direction: column;
 		}
-			header {
-				padding: 1rem 1rem 0.5rem;
-				text-align: center;
-				position: relative;
-			}
-			header h1, header h2 { margin: 0; }
-		header h1[contenteditable], header h2[contenteditable] {
+				header { display:none; }
+				#titleBlock {
+					padding: 0.75rem 1rem 0.25rem;
+					text-align: center;
+				}
+				#titleBlock h1, #titleBlock h2 { margin: 0; }
+				#titleBlock h1[contenteditable], #titleBlock h2[contenteditable] {
 			outline: none;
 			cursor: text;
 			padding: 2px 4px;
 			border-radius: 4px;
 		}
-		header h1[contenteditable]:focus, header h2[contenteditable]:focus {
+				#titleBlock h1[contenteditable]:focus, #titleBlock h2[contenteditable]:focus {
 			box-shadow: 0 0 0 2px #1976d24d;
 			background: #f5faff;
 		}
@@ -119,14 +119,6 @@
 		.secondary:hover { background: #ebebeb; }
 		#exportArea { width: 100%; min-height: 120px; font-size: 0.7rem; display: none; }
 		#toggleExport { font-size: 0.7rem; }
-			.presentation #controls,
-			.presentation #toggleExport,
-			.presentation #exportArea,
-			.presentation #presentationToggleLabel { display: none !important; }
-			.presentation body, .presentation #grid-wrapper { padding-top: 0; }
-			.presentation header { padding-top: 1.2rem; }
-			.presentation .cell button.cell-action { opacity: 0 !important; }
-			.presentation .cell:hover button.cell-action { opacity: 0 !important; }
 			@media (max-width: 700px) {
 			#grid { --grid-gap: 8px; }
 			.cell { min-height: 110px; }
@@ -134,10 +126,7 @@
 	</style>
 </head>
 <body>
-	<header>
-		<h1 id="gridTitle" contenteditable="true" data-placeholder="Grid Title">Game Grid</h1>
-		<h2 id="gridSubtitle" contenteditable="true" data-placeholder="Grid Subtitle">Subtitle</h2>
-	</header>
+		<header></header>
 	<section id="controls" aria-label="Grid controls">
 			<div>
 			<label for="templateSelect">Template</label>
@@ -187,11 +176,11 @@
 			<label>&nbsp;</label>
 			<button id="toggleExport" type="button">Show Export</button>
 		</div>
-			<div>
-				<label id="presentationToggleLabel">&nbsp;</label>
-				<button id="presentationToggle" type="button">Presentation Mode</button>
-			</div>
 	</section>
+			<div id="titleBlock">
+				<h1 id="gridTitle" contenteditable="true" data-placeholder="Grid Title">Game Grid</h1>
+				<h2 id="gridSubtitle" contenteditable="true" data-placeholder="Grid Subtitle">Subtitle</h2>
+			</div>
 	<main id="grid-wrapper">
 		<div id="grid" aria-live="polite"></div>
 		<textarea id="exportArea" readonly></textarea>
@@ -244,7 +233,6 @@
 		const clearBgBtn = document.getElementById('clearBg');
 		const regenerateBtn = document.getElementById('regenerate');
 		const toggleExportBtn = document.getElementById('toggleExport');
-		const presentationToggleBtn = document.getElementById('presentationToggle');
 		const cellWidthInput = document.getElementById('cellWidthInput');
 		const cellHeightInput = document.getElementById('cellHeightInput');
 		const exportArea = document.getElementById('exportArea');
@@ -286,20 +274,32 @@
 			});
 		}
 
-			function buildGrid() {
-				gridEl.style.gridTemplateColumns = `repeat(${state.cols}, 1fr)`;
-				const cw = parseInt(cellWidthInput.value, 10);
-				const ch = parseInt(cellHeightInput.value, 10);
-				if (!isNaN(cw)) {
-					gridEl.style.setProperty('--cell-width', cw + 'px');
-				} else {
-					gridEl.style.removeProperty('--cell-width');
-				}
-				if (!isNaN(ch)) {
-					gridEl.style.setProperty('--cell-height', ch + 'px');
-				} else {
-					gridEl.style.removeProperty('--cell-height');
-				}
+				function buildGrid() {
+					gridEl.style.gridTemplateColumns = `repeat(${state.cols}, 1fr)`;
+					const cw = parseInt(cellWidthInput.value, 10);
+					const ch = parseInt(cellHeightInput.value, 10);
+					if (!isNaN(cw)) {
+						gridEl.style.setProperty('--cell-width', cw + 'px');
+					} else {
+						gridEl.style.removeProperty('--cell-width');
+					}
+					if (!isNaN(ch)) {
+						gridEl.style.setProperty('--cell-height', ch + 'px');
+					} else {
+						gridEl.style.removeProperty('--cell-height');
+					}
+					// Center grid if explicit width shrinks overall width
+					if (!isNaN(cw)) {
+						const gap = 12; // matches --grid-gap default
+						const totalWidth = cw * state.cols + gap * (state.cols - 1);
+						gridEl.style.width = totalWidth + 'px';
+						gridEl.style.marginLeft = 'auto';
+						gridEl.style.marginRight = 'auto';
+					} else {
+						gridEl.style.width = '';
+						gridEl.style.marginLeft = '';
+						gridEl.style.marginRight = '';
+					}
 			// adjust cells array size
 			const needed = state.rows * state.cols;
 			if (state.cells.length > needed) state.cells.length = needed;
@@ -405,10 +405,6 @@
 				toggleExportBtn.textContent = open ? 'Show Export' : 'Hide Export';
 				if (!open) updateExport();
 			});
-					presentationToggleBtn.addEventListener('click', () => {
-						const isPresentation = document.documentElement.classList.toggle('presentation');
-						presentationToggleBtn.textContent = isPresentation ? 'Exit Presentation' : 'Presentation Mode';
-					});
 			titleEl.addEventListener('input', updateExport);
 			subtitleEl.addEventListener('input', updateExport);
 		}
@@ -419,12 +415,22 @@
 			const tpl = state.templates.find(t => t.id === id);
 			if (!tpl) return;
 			state.appliedTemplateId = tpl.id;
-			state.rows = tpl.rows;
-			state.cols = tpl.cols;
+					state.rows = tpl.rows;
+					state.cols = tpl.cols;
 			rowsInput.value = tpl.rows;
 			colsInput.value = tpl.cols;
 			titleEl.textContent = tpl.title || 'Game Grid';
 			subtitleEl.textContent = tpl.subtitle || '';
+					if (tpl.cellWidth) {
+						cellWidthInput.value = tpl.cellWidth;
+					} else {
+						cellWidthInput.value = '';
+					}
+					if (tpl.cellHeight) {
+						cellHeightInput.value = tpl.cellHeight;
+					} else {
+						cellHeightInput.value = '';
+					}
 			// categories
 			state.cells = [];
 			const total = tpl.rows * tpl.cols;
