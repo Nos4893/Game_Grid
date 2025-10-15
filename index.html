@@ -1,0 +1,441 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8" />
+	<title>Game Grid</title>
+	<meta name="viewport" content="width=device-width,initial-scale=1" />
+	<style>
+		:root {
+			--grid-gap: 12px;
+			--cell-border: 1px solid #000;
+			--overlay-bg: rgba(255,255,255,0.85);
+			--accent: #111;
+			--danger: #b00020;
+			--focus-ring: 2px solid #1976d2;
+		}
+		* { box-sizing: border-box; }
+		body {
+			margin: 0;
+			font-family: system-ui, Arial, sans-serif;
+			background: var(--page-bg, #fff) center/cover no-repeat fixed;
+			color: #000;
+			min-height: 100vh;
+			display: flex;
+			flex-direction: column;
+		}
+		header {
+			padding: 1rem 1rem 0.5rem;
+		}
+		header h1, header h2 { margin: 0; }
+		header h1[contenteditable], header h2[contenteditable] {
+			outline: none;
+			cursor: text;
+			padding: 2px 4px;
+			border-radius: 4px;
+		}
+		header h1[contenteditable]:focus, header h2[contenteditable]:focus {
+			box-shadow: 0 0 0 2px #1976d24d;
+			background: #f5faff;
+		}
+		#controls {
+			display: flex;
+			flex-wrap: wrap;
+			gap: 0.75rem 1rem;
+			padding: 0.75rem 1rem 1rem;
+			border-top: 1px solid #0002;
+			border-bottom: 1px solid #0002;
+			background: #fafafa;
+		}
+		#controls > div { display: flex; flex-direction: column; gap: 0.25rem; font-size: 0.8rem; }
+		#controls label { font-weight: 600; }
+		#controls input[type=number], #controls select, #controls input[type=text] {
+			padding: 4px 6px;
+			border: 1px solid #333;
+			border-radius: 4px;
+			min-width: 80px;
+			background: #fff;
+		}
+		#controls input[type=file] { font-size: 0.7rem; }
+		#controls button, .btn {
+			cursor: pointer;
+			padding: 6px 10px;
+			border: 1px solid #111;
+			background: #fff;
+			border-radius: 4px;
+			font-weight: 600;
+		}
+		#controls button:hover { background: #f0f0f0; }
+		#grid-wrapper { flex: 1; padding: 1rem; }
+		#grid {
+			display: grid;
+			gap: var(--grid-gap);
+			grid-auto-rows: 1fr;
+		}
+		.cell {
+			position: relative;
+			border: var(--cell-border);
+			background: #fff;
+			display: flex;
+			flex-direction: column;
+			overflow: hidden;
+			min-height: 140px;
+		}
+		.img-wrapper { flex: 1; position: relative; display: flex; align-items: center; justify-content: center; overflow: hidden; }
+		.img-wrapper img { max-width: 100%; max-height: 100%; object-fit: cover; display: block; }
+		.category { padding: 4px 6px; border-top: var(--cell-border); font-size: 0.75rem; background: #f8f8f8; min-height: 1.6em; display: flex; align-items: center; }
+		.cell button.cell-action {
+			position: absolute;
+			top: 6px;
+			right: 6px;
+			background: var(--overlay-bg);
+			border: 1px solid #222;
+			padding: 4px 6px;
+			font-size: 0.65rem;
+			opacity: 1;
+			transition: opacity 0.2s;
+		}
+		.cell.has-image button.cell-action { opacity: 0; }
+		.cell:hover button.cell-action { opacity: 1; }
+		.cell button.cell-action:focus { outline: var(--focus-ring); opacity: 1; }
+		.menu-spacer { flex: 1; }
+		#templateStatus { font-size: 0.7rem; color: #333; }
+		#bg-preview { max-width: 120px; max-height: 60px; object-fit: cover; border: 1px solid #0003; display: none; }
+		dialog#imageDialog {
+			border: 1px solid #222;
+			padding: 1rem 1.2rem 1.2rem;
+			max-width: 400px;
+		}
+		dialog#imageDialog::backdrop { background: rgba(0,0,0,0.4); }
+		form#imgForm { display: flex; flex-direction: column; gap: 0.75rem; }
+		form#imgForm fieldset { border: 1px solid #999; border-radius: 6px; padding: 0.5rem 0.75rem; }
+		form#imgForm legend { padding: 0 4px; font-size: 0.75rem; font-weight: 600; }
+		.actions-row { display: flex; gap: 0.5rem; justify-content: flex-end; }
+		.danger { color: #fff; background: var(--danger); border-color: var(--danger); }
+		.danger:hover { background: #c62828; }
+		.secondary { background: #f5f5f5; }
+		.secondary:hover { background: #ebebeb; }
+		#exportArea { width: 100%; min-height: 120px; font-size: 0.7rem; display: none; }
+		#toggleExport { font-size: 0.7rem; }
+		@media (max-width: 700px) {
+			#grid { --grid-gap: 8px; }
+			.cell { min-height: 110px; }
+		}
+	</style>
+</head>
+<body>
+	<header>
+		<h1 id="gridTitle" contenteditable="true" data-placeholder="Grid Title">Game Grid</h1>
+		<h2 id="gridSubtitle" contenteditable="true" data-placeholder="Grid Subtitle">Subtitle</h2>
+	</header>
+	<section id="controls" aria-label="Grid controls">
+		<div>
+			<label for="templateSelect">Template</label>
+			<select id="templateSelect">
+				<option value="">(none)</option>
+			</select>
+			<span id="templateStatus"></span>
+		</div>
+		<div>
+			<label for="rowsInput">Rows</label>
+			<input id="rowsInput" type="number" min="1" value="3" />
+		</div>
+		<div>
+			<label for="colsInput">Columns</label>
+			<input id="colsInput" type="number" min="1" value="4" />
+		</div>
+		<div>
+			<label for="bgUrlInput">Background URL</label>
+			<input id="bgUrlInput" type="text" placeholder="https://..." />
+			<button id="applyBgUrl" class="btn" type="button">Apply</button>
+		</div>
+		<div>
+			<label for="bgFileInput">Background File</label>
+			<input id="bgFileInput" type="file" accept="image/*" />
+		</div>
+		<div>
+			<label>Preview</label>
+			<img id="bg-preview" alt="Background preview" />
+		</div>
+		<div>
+			<label>&nbsp;</label>
+			<button id="clearBg" type="button">Clear Background</button>
+		</div>
+		<div>
+			<label>&nbsp;</label>
+			<button id="regenerate" type="button">Regenerate Grid</button>
+		</div>
+		<div>
+			<label>&nbsp;</label>
+			<button id="toggleExport" type="button">Show Export</button>
+		</div>
+	</section>
+	<main id="grid-wrapper">
+		<div id="grid" aria-live="polite"></div>
+		<textarea id="exportArea" readonly></textarea>
+	</main>
+
+	<dialog id="imageDialog">
+		<form id="imgForm" method="dialog">
+			<input type="hidden" id="cellIndex" />
+			<fieldset>
+				<legend>Image Source</legend>
+				<label style="display:flex; flex-direction:column; gap:4px; font-size:0.75rem;">Upload File
+					<input id="imgFile" type="file" accept="image/*" />
+				</label>
+				<label style="display:flex; flex-direction:column; gap:4px; font-size:0.75rem;">Or URL
+					<input id="imgUrl" type="text" placeholder="https://..." />
+				</label>
+			</fieldset>
+			<fieldset>
+				<legend>Category</legend>
+				<input id="imgCategory" type="text" placeholder="Category" />
+			</fieldset>
+			<div class="actions-row">
+				<button type="button" id="deleteImage" class="danger" style="margin-right:auto; display:none;">Delete</button>
+				<button type="button" class="secondary" id="cancelDialog">Cancel</button>
+				<button type="submit" id="saveImage">Save</button>
+			</div>
+		</form>
+	</dialog>
+
+	<script>
+		const state = {
+			rows: 3,
+			cols: 4,
+			cells: [], // {imageSrc, category, sourceType}
+			templates: [],
+			appliedTemplateId: null
+		};
+
+		const gridEl = document.getElementById('grid');
+		const rowsInput = document.getElementById('rowsInput');
+		const colsInput = document.getElementById('colsInput');
+		const templateSelect = document.getElementById('templateSelect');
+		const templateStatus = document.getElementById('templateStatus');
+		const titleEl = document.getElementById('gridTitle');
+		const subtitleEl = document.getElementById('gridSubtitle');
+		const bgUrlInput = document.getElementById('bgUrlInput');
+		const applyBgUrlBtn = document.getElementById('applyBgUrl');
+		const bgFileInput = document.getElementById('bgFileInput');
+		const bgPreview = document.getElementById('bg-preview');
+		const clearBgBtn = document.getElementById('clearBg');
+		const regenerateBtn = document.getElementById('regenerate');
+		const toggleExportBtn = document.getElementById('toggleExport');
+		const exportArea = document.getElementById('exportArea');
+
+		const imageDialog = document.getElementById('imageDialog');
+		const imgForm = document.getElementById('imgForm');
+		const imgFileInput = document.getElementById('imgFile');
+		const imgUrlInput = document.getElementById('imgUrl');
+		const imgCategoryInput = document.getElementById('imgCategory');
+		const cellIndexInput = document.getElementById('cellIndex');
+		const deleteImageBtn = document.getElementById('deleteImage');
+		const cancelDialogBtn = document.getElementById('cancelDialog');
+
+		function init() {
+			fetchTemplates();
+			buildGrid();
+			wireEvents();
+			applyContentEditablePlaceholders();
+		}
+
+		function fetchTemplates() {
+			fetch('templates.json')
+				.then(r => r.json())
+				.then(data => {
+					state.templates = data.templates || [];
+					populateTemplates();
+				})
+				.catch(err => {
+					console.warn('Failed to load templates', err);
+				});
+		}
+
+		function populateTemplates() {
+			state.templates.forEach(t => {
+				const opt = document.createElement('option');
+				opt.value = t.id;
+				opt.textContent = t.name;
+				templateSelect.appendChild(opt);
+			});
+		}
+
+		function buildGrid() {
+			gridEl.style.gridTemplateColumns = `repeat(${state.cols}, 1fr)`;
+			// adjust cells array size
+			const needed = state.rows * state.cols;
+			if (state.cells.length > needed) state.cells.length = needed;
+			while (state.cells.length < needed) state.cells.push({ imageSrc: null, category: '', sourceType: null });
+			gridEl.innerHTML = '';
+			state.cells.forEach((cell, idx) => {
+				const cellDiv = document.createElement('div');
+				cellDiv.className = 'cell' + (cell.imageSrc ? ' has-image' : '');
+				cellDiv.dataset.index = idx;
+				const imgWrap = document.createElement('div');
+				imgWrap.className = 'img-wrapper';
+				if (cell.imageSrc) {
+					const img = document.createElement('img');
+					img.src = cell.imageSrc;
+					img.alt = cell.category || `Game ${idx+1}`;
+					imgWrap.appendChild(img);
+				}
+				const actionBtn = document.createElement('button');
+				actionBtn.type = 'button';
+				actionBtn.className = 'cell-action';
+				actionBtn.textContent = cell.imageSrc ? 'Change' : 'Add Image';
+				actionBtn.addEventListener('click', () => openImageDialog(idx));
+				imgWrap.appendChild(actionBtn);
+				const catDiv = document.createElement('div');
+				catDiv.className = 'category';
+				catDiv.textContent = cell.category || '';
+				cellDiv.appendChild(imgWrap);
+				cellDiv.appendChild(catDiv);
+				gridEl.appendChild(cellDiv);
+			});
+			updateExport();
+		}
+
+		function openImageDialog(index) {
+			const cell = state.cells[index];
+			cellIndexInput.value = index;
+			imgFileInput.value = '';
+			imgUrlInput.value = '';
+			imgCategoryInput.value = cell.category || '';
+			deleteImageBtn.style.display = cell.imageSrc ? 'inline-block' : 'none';
+			imageDialog.showModal();
+		}
+
+		imgForm.addEventListener('submit', (e) => {
+			e.preventDefault();
+			const idx = parseInt(cellIndexInput.value, 10);
+			const cell = state.cells[idx];
+			const catVal = imgCategoryInput.value.trim();
+			let chosenSrc = null;
+			let sourceType = null;
+			if (imgFileInput.files && imgFileInput.files[0]) {
+				const file = imgFileInput.files[0];
+				chosenSrc = URL.createObjectURL(file);
+				sourceType = 'file';
+			} else if (imgUrlInput.value.trim()) {
+				chosenSrc = imgUrlInput.value.trim();
+				sourceType = 'url';
+			}
+			if (chosenSrc) {
+				cell.imageSrc = chosenSrc;
+				cell.sourceType = sourceType;
+			}
+			cell.category = catVal;
+			imageDialog.close();
+			buildGrid();
+		});
+
+		deleteImageBtn.addEventListener('click', () => {
+			const idx = parseInt(cellIndexInput.value, 10);
+			const cell = state.cells[idx];
+			cell.imageSrc = null;
+			cell.sourceType = null;
+			imageDialog.close();
+			buildGrid();
+		});
+		cancelDialogBtn.addEventListener('click', () => imageDialog.close());
+
+		function wireEvents() {
+			rowsInput.addEventListener('change', () => { state.rows = Math.max(1, parseInt(rowsInput.value,10)||1); buildGrid(); });
+			colsInput.addEventListener('change', () => { state.cols = Math.max(1, parseInt(colsInput.value,10)||1); buildGrid(); });
+			regenerateBtn.addEventListener('click', () => { state.rows = Math.max(1, parseInt(rowsInput.value,10)||1); state.cols = Math.max(1, parseInt(colsInput.value,10)||1); buildGrid(); });
+			templateSelect.addEventListener('change', applyTemplateSelection);
+			applyBgUrlBtn.addEventListener('click', () => {
+				if (bgUrlInput.value.trim()) {
+					setBackground(bgUrlInput.value.trim());
+				}
+			});
+			bgFileInput.addEventListener('change', () => {
+				if (bgFileInput.files && bgFileInput.files[0]) {
+					const url = URL.createObjectURL(bgFileInput.files[0]);
+					setBackground(url, true);
+				}
+			});
+			clearBgBtn.addEventListener('click', () => {
+				document.body.style.setProperty('--page-bg', '#fff');
+				bgPreview.style.display = 'none';
+			});
+			toggleExportBtn.addEventListener('click', () => {
+				const open = exportArea.style.display === 'block';
+				exportArea.style.display = open ? 'none' : 'block';
+				toggleExportBtn.textContent = open ? 'Show Export' : 'Hide Export';
+				if (!open) updateExport();
+			});
+			titleEl.addEventListener('input', updateExport);
+			subtitleEl.addEventListener('input', updateExport);
+		}
+
+		function applyTemplateSelection() {
+			const id = templateSelect.value;
+			if (!id) { state.appliedTemplateId = null; templateStatus.textContent = ''; return; }
+			const tpl = state.templates.find(t => t.id === id);
+			if (!tpl) return;
+			state.appliedTemplateId = tpl.id;
+			state.rows = tpl.rows;
+			state.cols = tpl.cols;
+			rowsInput.value = tpl.rows;
+			colsInput.value = tpl.cols;
+			titleEl.textContent = tpl.title || 'Game Grid';
+			subtitleEl.textContent = tpl.subtitle || '';
+			// categories
+			state.cells = [];
+			const total = tpl.rows * tpl.cols;
+			for (let i=0;i<total;i++) {
+				const r = Math.floor(i / tpl.cols);
+				const c = i % tpl.cols;
+				let category = '';
+				if (Array.isArray(tpl.categories) && tpl.categories[r] && typeof tpl.categories[r][c] !== 'undefined') {
+					category = tpl.categories[r][c];
+				}
+				state.cells.push({ imageSrc: null, category, sourceType: null });
+			}
+			buildGrid();
+			templateStatus.textContent = 'Applied';
+			setTimeout(()=> templateStatus.textContent='', 1800);
+		}
+
+		function setBackground(url) {
+			document.body.style.setProperty('--page-bg', `url('${url.replace(/'/g, "\\'")}')`);
+			bgPreview.src = url;
+			bgPreview.style.display = 'block';
+		}
+
+		function updateExport() {
+			if (exportArea.style.display !== 'block') return;
+			const exportData = {
+				title: titleEl.textContent.trim(),
+				subtitle: subtitleEl.textContent.trim(),
+				rows: state.rows,
+				cols: state.cols,
+				cells: state.cells.map(c => ({ imageSrc: c.imageSrc, category: c.category, sourceType: c.sourceType }))
+			};
+			exportArea.value = JSON.stringify(exportData, null, 2);
+		}
+
+		function applyContentEditablePlaceholders() {
+			const apply = (el) => {
+				if (!el.textContent.trim()) {
+					el.classList.add('placeholder');
+					el.dataset.original = el.textContent;
+				} else {
+					el.classList.remove('placeholder');
+				}
+			};
+			[titleEl, subtitleEl].forEach(el => {
+				apply(el);
+				el.addEventListener('blur', () => apply(el));
+			});
+		}
+
+		document.addEventListener('keydown', (e) => {
+			if (e.key === 'Escape' && imageDialog.open) imageDialog.close();
+		});
+
+		window.addEventListener('DOMContentLoaded', init);
+	</script>
+</body>
+</html>

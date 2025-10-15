@@ -1,0 +1,38 @@
+{
+  "templates": [
+    {
+      "id": "default-3x4",
+      "name": "Default 3x4",
+      "title": "My Game Collection",
+      "subtitle": "A curated grid of favorites",
+      "rows": 3,
+      "cols": 4,
+      "categories": [
+        ["Action", "RPG", "Indie", "Strategy"],
+        ["Shooter", "Adventure", "Puzzle", "Racing"],
+        ["Horror", "Simulation", "Platformer", "Fighting"]
+      ]
+    },
+    {
+      "id": "retro-2x5",
+      "name": "Retro 2x5",
+      "title": "Retro Classics",
+      "subtitle": "Pixel nostalgia showcase",
+      "rows": 2,
+      "cols": 5,
+      "categories": [
+        ["Arcade", "8-bit", "16-bit", "Atari", "DOS"],
+        ["Platformer", "Beat 'em up", "Shmup", "JRPG", "Sports"]
+      ]
+    },
+    {
+      "id": "empty-4x4",
+      "name": "Blank 4x4",
+      "title": "Untitled Grid",
+      "subtitle": "Describe your collection",
+      "rows": 4,
+      "cols": 4,
+      "categories": []
+    }
+  ]
+}
